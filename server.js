@@ -1,11 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const jwt = require('jsonwebtoken'); 
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET || "sua_chave_secreta_super_segura_123";
 
 const mongoURI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/opinai_db";
 mongoose.connect(mongoURI)
@@ -29,18 +32,40 @@ const Survey = mongoose.model('Survey', new mongoose.Schema({
 app.post('/api/register', async (req, res) => {
   try {
     const novoUsuario = new User(req.body);
-    await novoUsuario.save();
-    res.status(201).json({ message: "Usuário criado!" });
+    const usuarioSalvo = await novoUsuario.save();
+
+    const token = jwt.sign(
+      { id: usuarioSalvo._id, email: usuarioSalvo.email },
+      JWT_SECRET,
+      { expiresIn: '7d' } 
+    );
+
+    res.status(201).json({ 
+      message: "Usuário criado!", 
+      token, 
+      user: { id: usuarioSalvo._id, nome: usuarioSalvo.nome, pontos: usuarioSalvo.pontos } 
+    });
   } catch (err) {
-    res.status(400).json({ error: "Email já existe" });
+    res.status(400).json({ error: "Erro ao registrar usuário" });
   }
 });
 
 app.post('/api/login', async (req, res) => {
   const { email, senha } = req.body;
   const user = await User.findOne({ email, senha });
+  
   if (user) {
-    res.json({ success: true, user });
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({ 
+      success: true, 
+      token, 
+      user: { id: user._id, nome: user.nome, pontos: user.pontos } 
+    });
   } else {
     res.status(401).json({ message: "Credenciais inválidas" });
   }
