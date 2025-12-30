@@ -29,12 +29,20 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema, 'Usuarios');
 
-const Survey = mongoose.model('Survey', new mongoose.Schema({
+// --- ATUALIZAÇÃO AQUI: Esquema para aceitar perguntas complexas ---
+const SurveySchema = new mongoose.Schema({
   nome: String,
   tempo: String,
   valor: String,
-  perguntas: [String]
-}));
+  perguntas: [{
+    texto: String,
+    tipo: { type: String, default: 'texto' }, // 'texto', 'selecao' ou 'multipla'
+    opcoes: [String] // Array de strings para as escolhas
+  }]
+});
+
+const Survey = mongoose.model('Survey', SurveySchema);
+// ------------------------------------------------------------------
 
 const verifyAdmin = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -112,6 +120,7 @@ app.post('/api/surveys', verifyAdmin, async (req, res) => {
     await nova.save();
     res.status(201).json(nova);
   } catch (err) {
+    console.error(err);
     res.status(400).json({ error: "Erro ao criar pesquisa" });
   }
 });
@@ -123,12 +132,13 @@ app.post('/api/surveys/complete', async (req, res) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Converte o valor (ex: "10,00") para número (100 pontos)
-    const pontosGanhos = parseFloat(valor.replace(',', '.')) * 10;
+    // Converte valor (R$ 3,50) para número (3.50) e multiplica para pontos
+    const valorLimpo = String(valor).replace('R$', '').replace(',', '.').trim();
+    const pontosGanhos = parseFloat(valorLimpo) * 10;
 
     const user = await User.findByIdAndUpdate(
       decoded.id,
-      { $inc: { pontos: pontosGanhos } }, // Incrementa os pontos
+      { $inc: { pontos: pontosGanhos } },
       { new: true }
     );
 
@@ -138,7 +148,7 @@ app.post('/api/surveys/complete', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000; // Render usa porta 10000 geralmente
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
