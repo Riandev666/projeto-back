@@ -78,6 +78,17 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+app.get('/api/user/me', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-senha'); // Retorna tudo exceto a senha
+    res.json(user);
+  } catch (err) {
+    res.status(401).send();
+  }
+});
+
 app.put('/api/user/update', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).send();
