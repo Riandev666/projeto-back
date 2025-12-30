@@ -82,7 +82,7 @@ app.get('/api/user/me', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-senha'); // Retorna tudo exceto a senha
+    const user = await User.findById(decoded.id).select('-senha'); 
     res.json(user);
   } catch (err) {
     res.status(401).send();
@@ -113,6 +113,28 @@ app.post('/api/surveys', verifyAdmin, async (req, res) => {
     res.status(201).json(nova);
   } catch (err) {
     res.status(400).json({ error: "Erro ao criar pesquisa" });
+  }
+});
+
+app.post('/api/surveys/complete', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const { surveyId, valor } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Converte o valor (ex: "10,00") para número (100 pontos)
+    const pontosGanhos = parseFloat(valor.replace(',', '.')) * 10;
+
+    const user = await User.findByIdAndUpdate(
+      decoded.id,
+      { $inc: { pontos: pontosGanhos } }, // Incrementa os pontos
+      { new: true }
+    );
+
+    res.json({ message: "Pontos adicionados!", novosPontos: user.pontos });
+  } catch (err) {
+    res.status(401).json({ error: "Erro ao processar recompensa" });
   }
 });
 
