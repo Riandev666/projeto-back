@@ -29,20 +29,18 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema, 'Usuarios');
 
-// --- ATUALIZAÇÃO AQUI: Esquema para aceitar perguntas complexas ---
 const SurveySchema = new mongoose.Schema({
   nome: String,
   tempo: String,
   valor: String,
   perguntas: [{
     texto: String,
-    tipo: { type: String, default: 'texto' }, // 'texto', 'selecao' ou 'multipla'
-    opcoes: [String] // Array de strings para as escolhas
+    tipo: { type: String, default: 'texto' }, 
+    opcoes: [String] 
   }]
 });
 
 const Survey = mongoose.model('Survey', SurveySchema);
-// ------------------------------------------------------------------
 
 const verifyAdmin = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -63,6 +61,15 @@ const verifyAdmin = async (req, res, next) => {
     res.status(401).json({ error: "Sessão inválida" });
   }
 };
+
+app.get('/api/admin/users', verifyAdmin, async (req, res) => {
+  try {
+    const users = await User.find().select('-senha'); // Retorna todos menos a senha
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar usuários" });
+  }
+});
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -131,8 +138,6 @@ app.post('/api/surveys/complete', async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Converte valor (R$ 3,50) para número (3.50) e multiplica para pontos
     const valorLimpo = String(valor).replace('R$', '').replace(',', '.').trim();
     const pontosGanhos = parseFloat(valorLimpo) * 10;
 
@@ -148,7 +153,7 @@ app.post('/api/surveys/complete', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 10000; // Render usa porta 10000 geralmente
+const PORT = process.env.PORT || 10000; 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
