@@ -62,14 +62,28 @@ const verifyAdmin = async (req, res, next) => {
   }
 };
 
+// Rota para listar todos os usuários (Incluindo a senha)
 app.get('/api/admin/users', verifyAdmin, async (req, res) => {
   try {
-    const users = await User.find().select('-senha'); // Retorna todos menos a senha
+    // Removemos o .select('-senha') para que a senha apareça no painel
+    const users = await User.find(); 
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar usuários" });
   }
 });
+
+// Rota para excluir um usuário
+app.delete('/api/admin/users/:id', verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await User.findByIdAndDelete(id);
+    res.json({ message: "Usuário excluído com sucesso" });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao excluir usuário" });
+  }
+});
+
 
 app.post('/api/register', async (req, res) => {
   try {
