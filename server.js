@@ -17,7 +17,7 @@ const User = mongoose.model('User', new mongoose.Schema({
   email: { type: String, unique: true },
   senha: String, 
   pontos: { type: Number, default: 0 }
-}));
+}), 'Usuarios');
 
 const Survey = mongoose.model('Survey', new mongoose.Schema({
   nome: String,
