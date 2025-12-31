@@ -16,6 +16,7 @@ mongoose.connect(mongoURI)
   .then(() => console.log("✅ MongoDB Conectado"))
   .catch((err) => console.error("❌ Erro:", err));
 
+// --- ALTERAÇÃO NO SCHEMA DO USUÁRIO ---
 const UserSchema = new mongoose.Schema({
   nome: String,
   email: { type: String, unique: true },
@@ -24,7 +25,9 @@ const UserSchema = new mongoose.Schema({
   cpf: String,
   foto: String, 
   isAdmin: { type: Boolean, default: false }, 
-  pontos: { type: Number, default: 0 }
+  pontos: { type: Number, default: 0 },
+  // Novo campo para armazenar os IDs das pesquisas já feitas
+  pesquisasRespondidas: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Survey' }] 
 });
 
 const User = mongoose.model('User', UserSchema, 'Usuarios');
@@ -62,10 +65,8 @@ const verifyAdmin = async (req, res, next) => {
   }
 };
 
-// Rota para listar todos os usuários (Incluindo a senha)
 app.get('/api/admin/users', verifyAdmin, async (req, res) => {
   try {
-    // Removemos o .select('-senha') para que a senha apareça no painel
     const users = await User.find(); 
     res.json(users);
   } catch (err) {
@@ -73,7 +74,6 @@ app.get('/api/admin/users', verifyAdmin, async (req, res) => {
   }
 });
 
-// Rota para excluir um usuário
 app.delete('/api/admin/users/:id', verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -83,7 +83,6 @@ app.delete('/api/admin/users/:id', verifyAdmin, async (req, res) => {
     res.status(500).json({ error: "Erro ao excluir usuário" });
   }
 });
-
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -111,6 +110,7 @@ app.get('/api/user/me', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    // Agora retornamos o campo pesquisasRespondidas também
     const user = await User.findById(decoded.id).select('-senha'); 
     res.json(user);
   } catch (err) {
@@ -146,6 +146,7 @@ app.post('/api/surveys', verifyAdmin, async (req, res) => {
   }
 });
 
+// --- ROTA DE COMPLETAR PESQUISA ATUALIZADA ---
 app.post('/api/surveys/complete', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   const { surveyId, valor } = req.body;
@@ -157,11 +158,19 @@ app.post('/api/surveys/complete', async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       decoded.id,
-      { $inc: { pontos: pontosGanhos } },
+      { 
+        $inc: { pontos: pontosGanhos },
+        // Adiciona o ID da pesquisa ao array sem duplicar
+        $addToSet: { pesquisasRespondidas: surveyId } 
+      },
       { new: true }
     );
 
-    res.json({ message: "Pontos adicionados!", novosPontos: user.pontos });
+    res.json({ 
+      message: "Pontos adicionados!", 
+      novosPontos: user.pontos,
+      respondidas: user.pesquisasRespondidas 
+    });
   } catch (err) {
     res.status(401).json({ error: "Erro ao processar recompensa" });
   }
